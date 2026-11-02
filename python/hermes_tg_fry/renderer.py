@@ -1,21 +1,16 @@
 """Python Bridge for hermes-tg-fry to Hermes Gateway.
-Provides zero-crash aesthetic Telegram HTML card formatting matching the 🍟/🍤 fry-cards design language.
+Provides clean, aesthetic native Telegram formatting:
+- Standard Markdown quote for thinking process (clean native quote bar)
+- Pure clean response body
+- Minimalist notation footer: 🍟 dots3-note-prev · ⏱ 2.4s · ⚡ 48.5 tok/s · 🪙 160 tok
 """
 
 from __future__ import annotations
 
-import html
 import logging
 from typing import Any, Optional
 
 logger = logging.getLogger("hermes_tg_fry")
-
-
-def escape_html(text: str) -> str:
-    """Safe HTML entity escape for Telegram HTML parse_mode."""
-    if not text:
-        return ""
-    return html.escape(text, quote=False)
 
 
 def _truncate_model_name(name: str) -> str:
@@ -34,30 +29,36 @@ def render_telegram_card(
     model: str = "",
     turn_seconds: float = 0.0,
 ) -> dict[str, Any]:
-    """Render structured Telegram HTML card matching the 🍟/🍤 fry-cards aesthetic:
-    - Native <blockquote expandable> collapsible panel
-    - Content body
-    - Compact badge footer: ⏱ 1.4s · ⚡️ 1,240 tok · 82 t/s · 梁文锋⚡️
+    """Render clean aesthetic native Telegram message (Option 2):
+    1. Elegant quote block for thinking (standard Markdown >)
+    2. Pure natural response body (clean paragraphs, no messy tags)
+    3. Minimalist notation footer
     """
     parts = []
 
     model_display = _truncate_model_name(model)
 
-    # 1. 🍤/🍟 Unified Foldable Header & Thinking Panel
+    # 1. Elegant standard quote for thinking
     if thought and thought.strip():
-        thought_clean = thought.strip()
         sec_str = f" ({turn_seconds:.1f}s)" if turn_seconds > 0 else ""
-        header_text = f"<b>💭 思考过程{sec_str}</b>\n"
-        escaped_thought = escape_html(thought_clean)
-        parts.append(f"<blockquote expandable>{header_text}{escaped_thought}</blockquote>")
+        header = f"> 💭 思考过程{sec_str}"
+        lines = [line.strip() for line in thought.strip().splitlines() if line.strip()]
+        if lines:
+            # 限制最多显示主要思考内容，保持气泡清爽
+            quote_lines = [header]
+            for line in lines:
+                quote_lines.append(f"> {line}")
+            parts.append("\n".join(quote_lines))
 
     # 2. Main Response Content
     if content and content.strip():
-        cleaned_content = content.strip()
-        parts.append(cleaned_content)
+        parts.append(content.strip())
 
-    # 3. Compact Metric Footer (对齐 claw-tg-fry / hermes-fry-cards 规范)
-    footer_parts = ["🍤"]
+    # 3. Minimalist Notation Footer
+    footer_parts = []
+    if model_display:
+        footer_parts.append(f"🍟 {model_display}")
+
     if turn_seconds > 0:
         footer_parts.append(f"⏱ {turn_seconds:.1f}s")
 
@@ -67,17 +68,14 @@ def render_telegram_card(
             val = str(m.get("value", ""))
             unit = f" {m.get('unit', '')}" if m.get("unit") else ""
             if label.lower() == "tokens":
-                footer_parts.append(f"⚡️ {val}{unit}")
+                footer_parts.append(f"🪙 {val}{unit}")
             elif label.lower() == "tps":
-                footer_parts.append(f"{val} t/s")
+                footer_parts.append(f"⚡ {val} tok/s")
 
-    if model_display:
-        footer_parts.append(escape_html(model_display))
-
-    if len(footer_parts) > 1:
-        parts.append("<code>" + " · ".join(footer_parts) + "</code>")
+    if footer_parts:
+        parts.append(" · ".join(footer_parts))
 
     return {
         "text": "\n\n".join(parts).strip(),
-        "parseMode": "HTML",
+        "parseMode": "MarkdownV2",
     }
