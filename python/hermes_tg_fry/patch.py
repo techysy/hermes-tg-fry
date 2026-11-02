@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Optional
-from .renderer import render_telegram_card, escape_html
+from .renderer import render_telegram_card
 
 logger = logging.getLogger("hermes_tg_fry")
 
