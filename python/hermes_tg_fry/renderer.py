@@ -1,13 +1,21 @@
 """Python Bridge for hermes-tg-fry to Hermes Gateway.
-Provides zero-crash aesthetic Telegram MarkdownV2 card formatting matching the 🍟 hermes-fry-cards design language.
+Provides zero-crash aesthetic Telegram HTML card formatting matching the 🍟/🍤 fry-cards design language.
 """
 
 from __future__ import annotations
 
+import html
 import logging
 from typing import Any, Optional
 
 logger = logging.getLogger("hermes_tg_fry")
+
+
+def escape_html(text: str) -> str:
+    """Safe HTML entity escape for Telegram HTML parse_mode."""
+    if not text:
+        return ""
+    return html.escape(text, quote=False)
 
 
 def _truncate_model_name(name: str) -> str:
@@ -26,55 +34,50 @@ def render_telegram_card(
     model: str = "",
     turn_seconds: float = 0.0,
 ) -> dict[str, Any]:
-    """Render structured Telegram MarkdownV2 card with 🍟 fry-cards aesthetic:
-    - Unified collapsible panel with status header: **> 🍟 <model> · 💭 思考 · ⏱️ <duration>
+    """Render structured Telegram HTML card matching the 🍟/🍤 fry-cards aesthetic:
+    - Native <blockquote expandable> collapsible panel
     - Content body
-    - Compact badge footer: 📊 🪙 <tokens> · ⚡ <tps>
+    - Compact badge footer: ⏱ 1.4s · ⚡️ 1,240 tok · 82 t/s · 梁文锋⚡️
     """
     parts = []
 
-    # 1. 🍟 Unified Foldable Header & Thinking Panel
     model_display = _truncate_model_name(model)
-    panel_header_items = ["🍟 " + (model_display or "Hermes")]
 
-    if turn_seconds > 0:
-        panel_header_items.append(f"⏱️ {turn_seconds:.1f}s")
-
+    # 1. 🍤/🍟 Unified Foldable Header & Thinking Panel
     if thought and thought.strip():
-        panel_header_items.append("💭 思考过程")
-        header_text = " · ".join(panel_header_items)
-
-        thought_lines = [line.strip() for line in thought.strip().splitlines() if line.strip()]
-        if thought_lines:
-            quote_lines = [f"**> *{header_text}*"]
-            for idx, line in enumerate(thought_lines):
-                is_last = (idx == len(thought_lines) - 1)
-                end_marker = "||" if is_last else ""
-                quote_lines.append(f"**> {line}{end_marker}")
-            parts.append("\n".join(quote_lines))
-    elif model_display:
-        # If no thinking but model is present, show a slim header indicator
-        parts.append(f"**> *{' · '.join(panel_header_items)}*||")
+        thought_clean = thought.strip()
+        sec_str = f" ({turn_seconds:.1f}s)" if turn_seconds > 0 else ""
+        header_text = f"<b>💭 思考过程{sec_str}</b>\n"
+        escaped_thought = escape_html(thought_clean)
+        parts.append(f"<blockquote expandable>{header_text}{escaped_thought}</blockquote>")
 
     # 2. Main Response Content
     if content and content.strip():
-        # Strip any raw thinking blocks if accidentally present in content
         cleaned_content = content.strip()
         parts.append(cleaned_content)
 
-    # 3. Compact Metric Footer
+    # 3. Compact Metric Footer (对齐 claw-tg-fry / hermes-fry-cards 规范)
+    footer_parts = ["🍤"]
+    if turn_seconds > 0:
+        footer_parts.append(f"⏱ {turn_seconds:.1f}s")
+
     if metrics:
-        metric_items = []
         for m in metrics:
             label = str(m.get("label", ""))
             val = str(m.get("value", ""))
             unit = f" {m.get('unit', '')}" if m.get("unit") else ""
-            icon = f"{m.get('icon', '')} " if m.get("icon") else ""
-            metric_items.append(f"{icon}*{label}:* `{val}{unit}`")
-        if metric_items:
-            parts.append("📊 " + "  •  ".join(metric_items))
+            if label.lower() == "tokens":
+                footer_parts.append(f"⚡️ {val}{unit}")
+            elif label.lower() == "tps":
+                footer_parts.append(f"{val} t/s")
+
+    if model_display:
+        footer_parts.append(escape_html(model_display))
+
+    if len(footer_parts) > 1:
+        parts.append("<code>" + " · ".join(footer_parts) + "</code>")
 
     return {
         "text": "\n\n".join(parts).strip(),
-        "parseMode": "MarkdownV2",
+        "parseMode": "HTML",
     }
