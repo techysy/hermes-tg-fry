@@ -1,0 +1,33 @@
+{
+  "name": "hermes-tg-fry",
+  "version": "0.1.0",
+  "description": "Telegram card rendering and streaming interaction plugin for Hermes Agent Framework",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/"
+  },
+  "keywords": [
+    "hermes",
+    "telegram",
+    "bot",
+    "card",
+    "typewriter",
+    "streaming",
+    "agent"
+  ],
+  "author": "techysy",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}
